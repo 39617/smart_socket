@@ -1,0 +1,3 @@
+[submodule "contiki_multiple_interface"]
+	path = contiki_multiple_interface
+	url = https://github.com/39617/contiki_multiple_interface.git
