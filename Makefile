@@ -6,6 +6,9 @@ CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 # Debug - TODO: retirar
 CFLAGS += -g
 
+# Errors
+PROJECT_SOURCEFILES += ./error_codes.c
+
 # automatically build RESTful resources
 REST_RESOURCES_DIR = ./resources
 ifndef TARGET

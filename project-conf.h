@@ -1,14 +1,19 @@
 
-#ifndef __PROJECT_ERBIUM_CONF_H__
-#define __PROJECT_ERBIUM_CONF_H__
+#ifndef __PROJECT_SMART_SOCKET_CONF_H__
+#define __PROJECT_SMART_SOCKET_CONF_H__
 
 
-// TODO: cotumizar
-/* Custom channel and PAN ID configuration for your project. */
-/*
-   #undef IEEE802154_CONF_PANID
-   #define IEEE802154_CONF_PANID          0xABCD
- */
+// Radio
+#define IEEE802154_CONF_PANID           0xABCD
+#define RF_CORE_CONF_CHANNEL            25
+#define UIP_CONF_LLH_LEN				14
+
+
+// TODO just for tests
+#define NETSTACK_CONF_RDC				nullrdc_driver
+// TODO: just to test with Radio. Need to set back UIP_CONF_UDP_CHECKSUMS on platform project-conf.h
+#define UIP_CONF_IPV6_CHECKS			0
+
 
 /* IP buffer size must match all other hops, in particular the border router. */
 /* TODO: fazer testes para ajustar
@@ -66,4 +71,4 @@
 #define uip_ipaddr_copy(dest, src) 		memcpy(dest, src, sizeof(uip_ip6addr_t));
 #define uip_ip6addr_copy(dest, src)		memcpy(dest, src, sizeof(uip_ip6addr_t));
 
-#endif /* __PROJECT_ERBIUM_CONF_H__ */
+#endif /* __PROJECT_SMART_SOCKET_CONF_H__ */

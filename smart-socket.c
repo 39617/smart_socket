@@ -31,16 +31,10 @@ static void http_set_service_callback(service_callback_t callback) {}
 struct rest_implementation http_rest_implementation = {0};
 
 /*
- * Resources to be activated need to be imported through the extern keyword.
- * The build system automatically compiles the resources in the corresponding sub-directory.
+ * Resources to be used.
  */
 extern resource_t
-  res_hello,
-  res_push,
-  res_event;
-#if PLATFORM_HAS_LEDS
-extern resource_t res_leds, res_toggle;
-#endif
+  res_switch;
 
 
 
@@ -48,6 +42,9 @@ PROCESS(smart_socket, "Smart-Socket");
 AUTOSTART_PROCESSES(&smart_socket);
 
 
+/**
+ * Sets the IP configuration for the RF interface.
+ */
 static void init_rf_if_addr(void) {
 	if(!UIP_CONF_IPV6_RPL) {
 	  uip_ipaddr_t ipaddr;
@@ -108,18 +105,8 @@ PROCESS_THREAD(smart_socket, ev, data)
   http_rest_implementation.set_service_callback = http_set_service_callback;
   rest_init_engine();
 
-  /*
-   * Bind the resources to their Uri-Path.
-   * WARNING: Activating twice only means alternate path, not two instances!
-   * All static variables are the same for each URI path.
-   */
-  rest_activate_resource(&res_hello, "helloWorld");
-  rest_activate_resource(&res_push, "push");
-#if PLATFORM_HAS_LEDS
-/*  rest_activate_resource(&res_leds, "actuators/leds"); */
-  rest_activate_resource(&res_toggle, "toggle");
-#endif
-
+  /* Activate resources */
+  rest_activate_resource(&res_switch, "switch");
 
   while(1) {
     PROCESS_WAIT_EVENT();
@@ -145,8 +132,11 @@ PROCESS_THREAD(smart_socket, ev, data)
 #define VALUE(x) VALUE_TO_STRING(x)
 #define VAR_NAME_VALUE(var) #var "="  VALUE(var)
 
-/* Some example here */
+/* just for debug */
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_RA))
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_NS))
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_NA))
+#pragma message(VAR_NAME_VALUE(UIP_LLH_LEN))
+
+
 
