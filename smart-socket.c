@@ -21,6 +21,23 @@
 #define PRINTLLADDR(addr)
 #endif
 
+
+/*************************/
+#define SERVER_NODE(ipaddr)   uip_ip6addr(ipaddr, 0xfe80, 0, 0, 0, 0x0012, 0x4bff, 0xfe27, 0x0fc5) //controller IP
+
+//mover e mudar
+
+#define MAX_PATH_SIZE   30
+#define MAX_DATA_SIZE   200
+typedef struct _coap_http_request
+{
+    char path[MAX_PATH_SIZE]; //!< path for the resource
+    char data[MAX_DATA_SIZE]; //!< Pointer to data
+    int identifier; //!< identifier of the device - this device
+} coap_http_request_t, *p_coap_http_request_t;
+coap_http_request_t local_req;
+/*************************/
+
 static void http_init_engine(void) {}
 static void http_set_service_callback(service_callback_t callback) {}
 
@@ -35,12 +52,16 @@ struct rest_implementation http_rest_implementation = {0};
  */
 extern resource_t
   res_switch;
+extern resource_t
+    res_http_response;
 
 
 
 PROCESS(smart_socket, "Smart-Socket");
 AUTOSTART_PROCESSES(&smart_socket);
-
+/*************************/
+uip_ipaddr_t server_ipaddr;
+/*************************/
 
 /**
  * Sets the IP configuration for the RF interface.
@@ -75,12 +96,25 @@ static void init_rf_if_addr(void) {
 	}
 }
 
+void
+client_chunk_handler(void *response)
+{
+  const uint8_t *chunk;
+  rest_select_if(COAP_IF);
+  int len = REST.get_request_payload(response, &chunk);
 
+  //int len = coap_get_payload(response, &chunk);
+
+  printf("|%.*s", len, (char *)chunk);
+}
 
 PROCESS_THREAD(smart_socket, ev, data)
 {
   PROCESS_BEGIN();
-
+  /*************************/
+  static coap_packet_t request[1];      /* This way the packet can be treated as pointer as usual. */
+  SERVER_NODE(&server_ipaddr);
+  /*************************/
   PROCESS_PAUSE();
 
   PRINTF("* Starting Smart Socket process\n");
@@ -104,15 +138,34 @@ PROCESS_THREAD(smart_socket, ev, data)
   http_rest_implementation.init = http_init_engine;
   http_rest_implementation.set_service_callback = http_set_service_callback;
   rest_init_engine();
-
+  /*************************/
+  //coap_init_engine();
+  /*************************/
   /* Activate resources */
   rest_activate_resource(&res_switch, "switch");
+  rest_activate_resource(&res_http_response, "httpresponse");
 
   while(1) {
     PROCESS_WAIT_EVENT();
 #if PLATFORM_HAS_BUTTON
     if(ev == sensors_event && data == &button_sensor) {
       PRINTF("*******BUTTON*******\n");
+
+      strcpy(local_req.data, "request to send!"); //dummy data
+      local_req.identifier = 1234567890; //device id
+      strcpy(local_req.path, "/time/"); //http path
+
+      coap_init_message(request, COAP_TYPE_CON, METHOD_POST, 0);
+      coap_set_header_uri_path(request, "/httpreq"); //coap path
+      //const char msg[] = "request to send!";
+      coap_set_payload(request, (coap_http_request_t *) &local_req, sizeof(coap_http_request_t) - 1);
+      PRINT6ADDR(&server_ipaddr);
+      PRINTF(" : %u\n", UIP_HTONS(COAP_DEFAULT_PORT));
+
+      COAP_BLOCKING_REQUEST(&server_ipaddr, UIP_HTONS(COAP_DEFAULT_PORT), request,
+                            client_chunk_handler);
+
+      printf("\n--Done--\n");
 
       // TODO: Ver isto do res_event.trigger - serve para os updates periodicos dos consumos
       /* Call the event_handler for this application-specific event. */
