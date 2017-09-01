@@ -62,7 +62,8 @@
 // Used to make eth ll address different from radio interface
 #define IP_LINK_LOCAL_PREFIX_BYTE	                (0x22)
 
-
+// Disable link statistics to avoid nbr-table bug
+#define LINK_STATS_CONF_ENABLED                     0
 
 /**
  * Está aqui para resolver o problema do Hard Fault por desalinhamento na execução de store/load multiplos.
