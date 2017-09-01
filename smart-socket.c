@@ -5,6 +5,9 @@
 #include "contiki-net.h"
 #include "rest-engine.h"
 
+#include "ti-lib.h"
+#include "leds.h"
+
 #if PLATFORM_HAS_BUTTON
 #include "dev/button-sensor.h"
 #endif
@@ -75,10 +78,27 @@ static void init_rf_if_addr(void) {
 	}
 }
 
+#define LIGHT_ON_DURATION   0.05
+#define LIGHT_OFF_DURATION  5
+static clock_time_t update_light_signal() {
+  static uint8_t state;
+
+  if(state == 0) {
+    state = 1;
+    leds_on(LEDS_RED);
+    return LIGHT_ON_DURATION * CLOCK_SECOND;
+  }
+
+  state = 0;
+  leds_off(LEDS_RED);
+  return LIGHT_OFF_DURATION * CLOCK_SECOND;
+}
 
 
 PROCESS_THREAD(smart_socket, ev, data)
 {
+  static struct etimer et_light_signal;
+
   PROCESS_BEGIN();
 
   PROCESS_PAUSE();
@@ -108,6 +128,8 @@ PROCESS_THREAD(smart_socket, ev, data)
   /* Activate resources */
   rest_activate_resource(&res_switch, "switch");
 
+  etimer_set(&et_light_signal, update_light_signal());
+
   while(1) {
     PROCESS_WAIT_EVENT();
 #if PLATFORM_HAS_BUTTON
@@ -120,8 +142,11 @@ PROCESS_THREAD(smart_socket, ev, data)
 
       /* Also call the separate response example handler. */
       ///////////////////res_separate.resume();
-    }
+    } else
 #endif /* PLATFORM_HAS_BUTTON */
+    if(ev == PROCESS_EVENT_TIMER && data == &et_light_signal) {
+    	etimer_set(&et_light_signal, update_light_signal());
+    }
   }  /* while (1) */
 
   PROCESS_END();
