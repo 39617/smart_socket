@@ -4,9 +4,12 @@
 #include "contiki.h"
 #include "contiki-net.h"
 #include "rest-engine.h"
-
+//
 #include "ti-lib.h"
 #include "leds.h"
+//
+#include "netctrl-client.h"
+#include "netctrl-platform.h"
 
 #if PLATFORM_HAS_BUTTON
 #include "dev/button-sensor.h"
@@ -39,7 +42,19 @@ struct rest_implementation http_rest_implementation = {0};
 extern resource_t
   res_switch;
 
+/* Used to store data to be sent over netctrl */
+uint32_t netctrl_node_data = 0x61626364;
 
+/** IP's Controller */
+uip_ipaddr_t controller_ipaddr = {
+		.u16[0] = 0x80fe,
+		.u16[1] = 0x0,
+		.u16[2] = 0x0,
+		.u16[3] = 0x0,
+		.u16[4] = 0x1200,
+		.u16[5] = 0xff4b,
+		.u16[6] = 0x27fe,
+		.u16[7] = 0x0fc5 };
 
 PROCESS(smart_socket, "Smart-Socket");
 AUTOSTART_PROCESSES(&smart_socket);
@@ -49,22 +64,6 @@ AUTOSTART_PROCESSES(&smart_socket);
  * Sets the IP configuration for the RF interface.
  */
 static void init_rf_if_addr(void) {
-	if(!UIP_CONF_IPV6_RPL) {
-	  uip_ipaddr_t ipaddr;
-	  int i;
-
-	  uip_ip6addr(&ipaddr, UIP_DS6_DEFAULT_PREFIX, 0, 0, 0, 0, 0, 0, IPV6_CONF_ADDR_8);
-	  //uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
-	  uip_ds6_addr_add(&ipaddr, 0, ADDR_TENTATIVE);
-	  printf("* Radio: Tentative site IPv6 address ");
-	  for(i = 0; i < 7; ++i) {
-		  printf("%02x%02x:",
-			   ipaddr.u8[i * 2], ipaddr.u8[i * 2 + 1]);
-	  }
-	  printf("%02x%02x\n",
-			 ipaddr.u8[7 * 2], ipaddr.u8[7 * 2 + 1]);
-	}
-
 	printf("* Radio: Tentative link-local IPv6 address ");
 	{
 	uip_ds6_addr_t *lladdr;
@@ -98,6 +97,7 @@ static clock_time_t update_light_signal() {
 PROCESS_THREAD(smart_socket, ev, data)
 {
   static struct etimer et_light_signal;
+  static struct etimer et_netctrl;
 
   PROCESS_BEGIN();
 
@@ -128,7 +128,11 @@ PROCESS_THREAD(smart_socket, ev, data)
   /* Activate resources */
   rest_activate_resource(&res_switch, "switch");
 
+  // Netctrl
+  netctrl_client_init_network(&controller_ipaddr, NETCTRL_DEFAULT_LISTEN_PORT);
+
   etimer_set(&et_light_signal, update_light_signal());
+  etimer_set(&et_netctrl, 5 * CLOCK_SECOND);
 
   while(1) {
     PROCESS_WAIT_EVENT();
@@ -146,7 +150,20 @@ PROCESS_THREAD(smart_socket, ev, data)
 #endif /* PLATFORM_HAS_BUTTON */
     if(ev == PROCESS_EVENT_TIMER && data == &et_light_signal) {
     	etimer_set(&et_light_signal, update_light_signal());
-    }
+    } else if(ev == PROCESS_EVENT_TIMER && data == &et_netctrl) {
+		etimer_set(&et_netctrl,
+				netctrl_client_handle_event(NETCTRL_CLIENT_EVT_TIMER) * CLOCK_SECOND);
+	} else if(ev == tcpip_event) {
+		if(uip_newdata()) {
+			PRINTF("** Receiving UDP datagram from: ");
+			PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
+			PRINTF(":%u\n  Length: %u\n", uip_ntohs(UIP_UDP_BUF->srcport),
+				   uip_datalen());
+			//
+			etimer_set(&et_netctrl,
+					netctrl_client_handle_event(NETCTRL_CLIENT_EVT_NET) * CLOCK_SECOND);
+		}
+	}
   }  /* while (1) */
 
   PROCESS_END();
@@ -162,6 +179,5 @@ PROCESS_THREAD(smart_socket, ev, data)
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_NS))
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_NA))
 #pragma message(VAR_NAME_VALUE(UIP_LLH_LEN))
-
 
 

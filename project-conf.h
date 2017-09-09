@@ -2,18 +2,16 @@
 #ifndef __PROJECT_SMART_SOCKET_CONF_H__
 #define __PROJECT_SMART_SOCKET_CONF_H__
 
+// Smart socket
+#define NODE_EQUIPEMENT_TYPE           0x01
 
 // Radio
 #define IEEE802154_CONF_PANID           0xABCD
 #define RF_CORE_CONF_CHANNEL            25
 #define UIP_CONF_LLH_LEN				14
 
-
 // TODO just for tests
 #define NETSTACK_CONF_RDC				nullrdc_driver
-// TODO: just to test with Radio. Need to set back UIP_CONF_UDP_CHECKSUMS on platform project-conf.h
-#define UIP_CONF_IPV6_CHECKS			0
-
 
 /* IP buffer size must match all other hops, in particular the border router. */
 /* TODO: fazer testes para ajustar
@@ -56,11 +54,6 @@
 #define UIP_CONF_UDP								1
 // Multi Interfaces
 #define UIP_CONF_DS6_INTERFACES_NUMBER				1
-#define UIP_CONF_DS6_DEFAULT_PREFIX					0xFEC0
-// Utilizado para construir o endereço Site-Local do nó
-#define IPV6_CONF_ADDR_8			                0xB
-// Used to make eth ll address different from radio interface
-#define IP_LINK_LOCAL_PREFIX_BYTE	                (0x22)
 
 // Disable link statistics to avoid nbr-table bug
 #define LINK_STATS_CONF_ENABLED                     0
