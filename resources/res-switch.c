@@ -29,7 +29,7 @@
 #include "leds.h"
 
 
-#define MAX_ETAG_SIZE						2
+#define MAX_ETAG_SIZE  2
 
 
 static void res_get_handler(void *request, void *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
@@ -51,7 +51,7 @@ static uint8_t validate_etag[MAX_ETAG_SIZE] = { 0 };
 static uint8_t validate_etag_len = 1;
 static uint8_t validate_change = 1;
 
-
+/*---------------------------------------------------------------------------*/
 static void
 validate_update_etag()
 {
@@ -65,17 +65,17 @@ validate_update_etag()
   printf("### SERVER ACTION ### Changed ETag %u [0x%02X%02X%02X%02X%02X%02X%02X%02X]\n",
          validate_etag_len, validate_etag[0], validate_etag[1], validate_etag[2], validate_etag[3], validate_etag[4], validate_etag[5], validate_etag[6], validate_etag[7]);
 }
-
-
-
+/*---------------------------------------------------------------------------*/
 static void
-res_get_handler(void *request, void *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)
+res_get_handler(void *request, void *response, uint8_t *buffer,
+		uint16_t preferred_size, int32_t *offset)
 {
 	if(validate_change) {
 		validate_update_etag();
 	}
 
-	int len = snprintf((char *)buffer, MAX_RSP_PAYLOAD, rsp_switch_state_as_json, switch_state);
+	int len = snprintf((char *)buffer, MAX_RSP_PAYLOAD,
+			rsp_switch_state_as_json, switch_state);
 
 	REST.set_header_content_type(response, REST.type.APPLICATION_JSON);
 	REST.set_header_etag(response, validate_etag, validate_etag_len);
@@ -85,12 +85,14 @@ res_get_handler(void *request, void *response, uint8_t *buffer, uint16_t preferr
 static void set_bad_req(void *response) {
 	REST.set_response_status(response, BAD_REQUEST_4_00);
 	REST.set_header_content_type(response, REST.type.APPLICATION_JSON);
-	int len = snprintf(error_buffer, ERROR_BUFFER_SIZE, error_template, error_invalid_params);
+	int len = snprintf(error_buffer, ERROR_BUFFER_SIZE, error_template,
+			error_invalid_params);
 	REST.set_response_payload(response, error_buffer, len);
 }
-
+/*---------------------------------------------------------------------------*/
 static void
-res_put_handler(void *request, void *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset)
+res_put_handler(void *request, void *response, uint8_t *buffer,
+		uint16_t preferred_size, int32_t *offset)
 {
 	const char *state = NULL;
 	int len;
@@ -102,7 +104,6 @@ res_put_handler(void *request, void *response, uint8_t *buffer, uint16_t preferr
 			switch_state = 1;
 		}
 		else if ((strncmp(state, "off", 3) == 0) && (len == 3)) {
-			// TODO: passa a trabalhar com um driver
 			leds_off(LEDS_GREEN);
 			switch_state = 0;
 		}
@@ -115,11 +116,8 @@ res_put_handler(void *request, void *response, uint8_t *buffer, uint16_t preferr
 		return;
 	}
 
-
 	/* Set resource as changed */
 	validate_change = 1;
-
-	// TODO: passar para changed?
 	REST.set_response_status(response, CHANGED_2_04);
 }
 

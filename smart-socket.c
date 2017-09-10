@@ -10,6 +10,8 @@
 //
 #include "netctrl-client.h"
 #include "netctrl-platform.h"
+//
+#include "consume-reader.h"
 
 #if PLATFORM_HAS_BUTTON
 #include "dev/button-sensor.h"
@@ -27,6 +29,8 @@
 #define PRINTLLADDR(addr)
 #endif
 
+#define SENSORS_CONFIG_CHANNEL(sensor, channel) (sensor).configure(ADC_SENSOR_SET_CHANNEL, channel)
+
 static void http_init_engine(void) {}
 static void http_set_service_callback(service_callback_t callback) {}
 
@@ -40,7 +44,8 @@ struct rest_implementation http_rest_implementation = {0};
  * Resources to be used.
  */
 extern resource_t
-  res_switch;
+  res_switch,
+  res_readcons;
 
 /* Used to store data to be sent over netctrl */
 uint32_t netctrl_node_data = 0x61626364;
@@ -126,10 +131,14 @@ PROCESS_THREAD(smart_socket, ev, data)
   rest_init_engine();
 
   /* Activate resources */
-  rest_activate_resource(&res_switch, "switch");
+  rest_activate_resource(&res_switch, "switch"); // on/off switch
+  rest_activate_resource(&res_readcons, "readcons"); // read energetic consume
 
   // Netctrl
   netctrl_client_init_network(&controller_ipaddr, NETCTRL_DEFAULT_LISTEN_PORT);
+
+  /* Init Consume Reader */
+  init_consume_reader();
 
   etimer_set(&et_light_signal, update_light_signal());
   etimer_set(&et_netctrl, 5 * CLOCK_SECOND);
@@ -139,6 +148,7 @@ PROCESS_THREAD(smart_socket, ev, data)
 #if PLATFORM_HAS_BUTTON
     if(ev == sensors_event && data == &button_sensor) {
       PRINTF("*******BUTTON*******\n");
+      PRINTF("ADC Value: %d\n", read_consumption());
 
       // TODO: Ver isto do res_event.trigger - serve para os updates periodicos dos consumos
       /* Call the event_handler for this application-specific event. */

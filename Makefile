@@ -8,6 +8,8 @@ CFLAGS += -g
 
 # Errors
 PROJECT_SOURCEFILES += ./error_codes.c
+# Consume Reader
+PROJECT_SOURCEFILES += ./consume-reader.c
 
 # automatically build RESTful resources
 REST_RESOURCES_DIR = ./resources
