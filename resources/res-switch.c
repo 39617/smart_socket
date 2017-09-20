@@ -62,8 +62,9 @@ validate_update_etag()
   }
   validate_change = 0;
 
-  printf("### SERVER ACTION ### Changed ETag %u [0x%02X%02X%02X%02X%02X%02X%02X%02X]\n",
-         validate_etag_len, validate_etag[0], validate_etag[1], validate_etag[2], validate_etag[3], validate_etag[4], validate_etag[5], validate_etag[6], validate_etag[7]);
+  // TODO: Test etag
+  //printf("### SERVER ACTION ### Changed ETag %u [0x%02X%02X%02X%02X%02X%02X%02X%02X]\n",
+  //       validate_etag_len, validate_etag[0], validate_etag[1], validate_etag[2], validate_etag[3], validate_etag[4], validate_etag[5], validate_etag[6], validate_etag[7]);
 }
 /*---------------------------------------------------------------------------*/
 static void

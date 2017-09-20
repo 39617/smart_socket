@@ -15,6 +15,9 @@
 
 #include "dev/adc-sensor.h"
 
+/*!< Event Read consume */
+extern process_event_t read_consume_event;
+
 /*---------------------------------------------------------------------------*/
 /**
  * Initialize the Consume Reader
@@ -27,6 +30,8 @@ void init_consume_reader();
  * \return Returns the calibrated value based on the ADC read.
  */
 int read_consumption();
+/*---------------------------------------------------------------------------*/
+PROCESS_NAME(consume_reader_process);
 
 /**
  * @}

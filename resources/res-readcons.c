@@ -33,7 +33,7 @@ RESOURCE(res_readcons,
 		NULL,
         NULL);
 
-static char rsp_consume_read_as_json[] = "{\"cons\":%d}";
+extern char rsp_consume_read_as_json[];
 /*---------------------------------------------------------------------------*/
 static void
 res_get_handler(void *request, void *response, uint8_t *buffer,

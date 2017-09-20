@@ -10,6 +10,9 @@
 #define RF_CORE_CONF_CHANNEL            25
 #define UIP_CONF_LLH_LEN				14
 
+#define COAPTOHTTP_URI  "coaptohttp" /*!< Controller's endpoint used to send CoAP messages to the exterior */
+#define CONSUME_PATH  "p=/consumo" /*!< External endpoint used to send periodic consumption readings */
+
 // TODO just for tests
 #define NETSTACK_CONF_RDC				nullrdc_driver
 
@@ -19,7 +22,8 @@
    #define UIP_CONF_BUFFER_SIZE           256
  */
 
-
+#define UIP_CONF_IPV6_QUEUE_PKT  1 /*!< Enables Queue packet buffer */
+#define QUEUEBUF_CONF_NUM  4 /*!< Limits the Queue buffer to 4 packets at a time. Uses ~830 bytes of RAM */
 
 /* Disabling TCP on CoAP nodes. */
 #undef UIP_CONF_TCP
@@ -44,7 +48,6 @@
 #define COAP_LINK_FORMAT_FILTERING     0
 #undef COAP_PROXY_OPTION_PROCESSING
 #define COAP_PROXY_OPTION_PROCESSING   0
-
 
 
 #define UIP_CONF_IPV6_RPL							0

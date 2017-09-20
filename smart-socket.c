@@ -12,10 +12,9 @@
 #include "netctrl-platform.h"
 //
 #include "consume-reader.h"
-
-#if PLATFORM_HAS_BUTTON
+//
 #include "dev/button-sensor.h"
-#endif
+
 
 #define DEBUG 1
 #if DEBUG
@@ -30,6 +29,7 @@
 #endif
 
 #define SENSORS_CONFIG_CHANNEL(sensor, channel) (sensor).configure(ADC_SENSOR_SET_CHANNEL, channel)
+#define PEIODIC_READS_INTERVAL  5
 
 static void http_init_engine(void) {}
 static void http_set_service_callback(service_callback_t callback) {}
@@ -98,11 +98,11 @@ static clock_time_t update_light_signal() {
   return LIGHT_OFF_DURATION * CLOCK_SECOND;
 }
 
-
 PROCESS_THREAD(smart_socket, ev, data)
 {
   static struct etimer et_light_signal;
   static struct etimer et_netctrl;
+  static struct etimer et_periodic_read;
 
   PROCESS_BEGIN();
 
@@ -141,23 +141,11 @@ PROCESS_THREAD(smart_socket, ev, data)
   init_consume_reader();
 
   etimer_set(&et_light_signal, update_light_signal());
-  etimer_set(&et_netctrl, 5 * CLOCK_SECOND);
+  etimer_set(&et_netctrl, 1 * CLOCK_SECOND);
 
   while(1) {
     PROCESS_WAIT_EVENT();
-#if PLATFORM_HAS_BUTTON
-    if(ev == sensors_event && data == &button_sensor) {
-      PRINTF("*******BUTTON*******\n");
-      PRINTF("ADC Value: %d\n", read_consumption());
 
-      // TODO: Ver isto do res_event.trigger - serve para os updates periodicos dos consumos
-      /* Call the event_handler for this application-specific event. */
-      //////////////res_event.trigger();
-
-      /* Also call the separate response example handler. */
-      ///////////////////res_separate.resume();
-    } else
-#endif /* PLATFORM_HAS_BUTTON */
     if(ev == PROCESS_EVENT_TIMER && data == &et_light_signal) {
     	etimer_set(&et_light_signal, update_light_signal());
     } else if(ev == PROCESS_EVENT_TIMER && data == &et_netctrl) {
@@ -169,11 +157,22 @@ PROCESS_THREAD(smart_socket, ev, data)
 			PRINT6ADDR(&UIP_IP_BUF->srcipaddr);
 			PRINTF(":%u\n  Length: %u\n", uip_ntohs(UIP_UDP_BUF->srcport),
 				   uip_datalen());
-			//
+			uint8_t registered = netctrl_is_registered();
+			// Handle the response
 			etimer_set(&et_netctrl,
 					netctrl_client_handle_event(NETCTRL_CLIENT_EVT_NET) * CLOCK_SECOND);
+			// Verifiy if the node are registered just after this response
+			if((registered != NETCTRL_CLIENT_REGISTERED) && (netctrl_is_registered() == netctrl_is_registered())) {
+				etimer_set(&et_periodic_read, PEIODIC_READS_INTERVAL * CLOCK_SECOND);
+			}
 		}
-	}
+	} else if(((ev == PROCESS_EVENT_TIMER && data == &et_periodic_read) ||
+    		(ev == sensors_event && data == &button_sensor)) &&
+			netctrl_is_registered()) {
+      PRINTF("** Periodic Read Timer\n");
+      // Send a periodic read request
+      process_post(&consume_reader_process, read_consume_event, NULL);
+    }
   }  /* while (1) */
 
   PROCESS_END();
@@ -189,5 +188,3 @@ PROCESS_THREAD(smart_socket, ev, data)
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_NS))
 #pragma message(VAR_NAME_VALUE(UIP_ND6_SEND_NA))
 #pragma message(VAR_NAME_VALUE(UIP_LLH_LEN))
-
-
