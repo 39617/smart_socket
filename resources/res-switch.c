@@ -43,7 +43,7 @@ RESOURCE(res_switch,
         NULL);
 
 static uint8_t switch_state = SWITCH_DEFAULT_STATE;
-static char rsp_switch_state_as_json[] = "{\"state\":\"%u\"}";
+static char rsp_switch_state_as_json[] = "{\"state\":%u}";
 /**
  * eTAG to control the version of the switch's state
  */
