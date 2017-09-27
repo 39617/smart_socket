@@ -14,6 +14,7 @@
 //
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "contiki.h"
 #include "contiki-net.h"
 //
@@ -46,8 +47,23 @@ char rsp_consume_read_as_json[] = "{\"cons\":%d}"; /*!< JSON object with the con
 /** IP's Controller */
 extern uip_ipaddr_t controller_ipaddr;
 
-PROCESS(consume_reader_process, "Consume-Reader");
+/**
+ * Number of requests
+ */
+int consume_reader_requests = 0;
 
+
+
+int mVperAmp = 66; // use 100 for 20A Module and 66 for 30A Module
+static float Voltage = 0;
+static float VRMS = 0;
+static float AmpsRMS = 0;
+static float get_vpp();
+
+
+
+
+PROCESS(consume_reader_process, "Consume-Reader");
 /*---------------------------------------------------------------------------*/
 void init_consume_reader() {
 	SENSORS_ACTIVATE(adc_sensor);
@@ -57,7 +73,12 @@ void init_consume_reader() {
 }
 /*---------------------------------------------------------------------------*/
 int read_consumption() {
-	return adc_sensor.value(ADC_SENSOR_VALUE);
+	Voltage = get_vpp();
+	VRMS = (Voltage/2.0f) * 0.707f;  //root 2 is 0.707
+	AmpsRMS = (VRMS * 1000)/mVperAmp;
+
+	int ret = (int) ((AmpsRMS-0.2f) * 1000.0f);
+	return ret;
 }
 /*---------------------------------------------------------------------------*/
 static void prepare_request()
@@ -70,7 +91,7 @@ static void prepare_request()
     int len = snprintf((char *)buff, MAX_RSP_PAYLOAD, rsp_consume_read_as_json, last_consume_read);
 	coap_set_payload(request_packet, (uint8_t *)&buff, len);
 }
-
+/*---------------------------------------------------------------------------*/
 /**
  * @brief Handles chunks transfer
  *
@@ -79,7 +100,7 @@ static void prepare_request()
  * @param response : Pointer to the response packet
  * @return nothing
  */
-void client_chunk_handler(void *response)
+static void client_chunk_handler(void *response)
 {
 	PRINTF("CoAP response received\n");
 	// TODO: handle the response
@@ -92,6 +113,34 @@ void client_chunk_handler(void *response)
     int len = REST.get_request_payload(response, &chunk);
     PRINTF("Payload len: %d\n",  len);
 }
+/*---------------------------------------------------------------------------*/
+static float get_vpp()
+{
+  float readValue;
+  float maxValue = 0;          // store max value here
+  float minValue = INT_MAX;          // store min value here
+
+  clock_time_t start_time = clock_time();
+   while((clock_time()-start_time) < (CLOCK_SECOND * 0.5f)) //sample for 1 Sec
+   {
+       readValue = adc_sensor.value(ADC_SENSOR_VALUE) / 1000000.0f;
+       // see if you have a new maxValue
+       if (readValue > maxValue)
+       {
+           /*record the maximum sensor value*/
+           maxValue += readValue;
+           maxValue = maxValue / 2.0f;
+       }
+       else if (readValue < minValue)
+       {
+           /*record the minimum sensor value*/
+           minValue += readValue;
+           minValue = minValue / 2.0f;
+       }
+   }
+
+   return (maxValue - minValue);
+ }
 
 PROCESS_THREAD(consume_reader_process, ev, data)
 {
@@ -113,16 +162,17 @@ PROCESS_THREAD(consume_reader_process, ev, data)
       PRINTF("   ADC Value: %d\n", last_consume_read);
       prepare_request();
       // Make the CoAP request!
+      consume_reader_requests++;
 	  COAP_BLOCKING_REQUEST(
 			  &controller_ipaddr,
 			  UIP_HTONS(COAP_DEFAULT_PORT), request_packet,
 			  client_chunk_handler);
+	  consume_reader_requests--;
     }
   }  /* while (1) */
 
   PROCESS_END();
 }
-
 /**
  * @}
  */

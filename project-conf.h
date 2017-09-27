@@ -61,7 +61,7 @@
 // Disable link statistics to avoid nbr-table bug
 #define LINK_STATS_CONF_ENABLED                     0
 // FIXME: This temporarely disables CSMA Driver to avoid the bug below
-https://github.com/contiki-os/contiki/pull/2161
+// https://github.com/contiki-os/contiki/pull/2161
 #define NETSTACK_CONF_MAC                           nullmac_driver
 
 /**

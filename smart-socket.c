@@ -47,6 +47,8 @@ extern resource_t
   res_switch,
   res_readcons;
 
+extern int consume_reader_requests;
+
 /* Used to store data to be sent over netctrl */
 uint32_t netctrl_node_data = 0x61626364;
 
@@ -171,7 +173,9 @@ PROCESS_THREAD(smart_socket, ev, data)
 			netctrl_is_registered()) {
       PRINTF("** Periodic Read Timer\n");
       // Send a periodic read request
-      process_post(&consume_reader_process, read_consume_event, NULL);
+      if(consume_reader_requests == 0) {
+    	  process_post(&consume_reader_process, read_consume_event, NULL);
+      }
     }
   }  /* while (1) */
 
