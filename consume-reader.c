@@ -14,7 +14,7 @@
 //
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
+#include <float.h>
 #include "contiki.h"
 #include "contiki-net.h"
 //
@@ -23,7 +23,7 @@
 #include "include/smart-socket_constants.h"
 
 
-#define DEBUG 1
+#define DEBUG 0
 #if DEBUG
 #include <stdio.h>
 #define PRINTF(...) printf(__VA_ARGS__)
@@ -35,6 +35,7 @@
 #define PRINTLLADDR(addr)
 #endif
 
+#define NODE_DATA_MASK  0xFFFF
 
 /* Used to store the last consume readed. */
 uint16_t last_consume_read;
@@ -43,9 +44,10 @@ process_event_t read_consume_event;
 //
 static coap_packet_t request_packet[1]; /*!< Used to send CoAP messages */
 char rsp_consume_read_as_json[] = "{\"cons\":%d}"; /*!< JSON object with the consumption read */
-
 /** IP's Controller */
 extern uip_ipaddr_t controller_ipaddr;
+/* Used to store data to be sent over netctrl */
+extern uint32_t netctrl_node_data;
 
 /**
  * Number of requests
@@ -77,7 +79,7 @@ int read_consumption() {
 	VRMS = (Voltage/2.0f) * 0.707f;  //root 2 is 0.707
 	AmpsRMS = (VRMS * 1000)/mVperAmp;
 
-	int ret = (int) ((AmpsRMS-0.2f) * 1000.0f);
+	int ret = (int) ((AmpsRMS-0.09f) * 1000.0f);
 	return ret;
 }
 /*---------------------------------------------------------------------------*/
@@ -118,7 +120,7 @@ static float get_vpp()
 {
   float readValue;
   float maxValue = 0;          // store max value here
-  float minValue = INT_MAX;          // store min value here
+  float minValue = FLT_MAX;          // store min value here
 
   clock_time_t start_time = clock_time();
    while((clock_time()-start_time) < (CLOCK_SECOND * 0.5f)) //sample for 1 Sec
@@ -159,6 +161,7 @@ PROCESS_THREAD(consume_reader_process, ev, data)
 	if(ev == read_consume_event) {
       PRINTF("   Periodic Read Event\n");
       last_consume_read = read_consumption();
+      netctrl_node_data = (netctrl_node_data & (~NODE_DATA_MASK)) | last_consume_read;
       PRINTF("   ADC Value: %d\n", last_consume_read);
       prepare_request();
       // Make the CoAP request!

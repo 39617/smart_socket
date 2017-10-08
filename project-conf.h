@@ -39,6 +39,10 @@
    #define COAP_MAX_HEADER_SIZE           70
  */
 
+// To save RAM
+#define UIP_CONF_MAX_ROUTES                         0
+#define NBR_TABLE_CONF_MAX_NEIGHBORS                10
+#define PROCESS_CONF_NO_PROCESS_NAMES               1
 /* Multiplies with chunk size, be aware of memory constraints. */
 #undef COAP_MAX_OPEN_TRANSACTIONS
 #define COAP_MAX_OPEN_TRANSACTIONS     4

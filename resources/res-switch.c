@@ -30,6 +30,8 @@
 
 
 #define MAX_ETAG_SIZE  2
+#define NODE_DATA_SWITCH_SHIFT  16
+#define NODE_DATA_SWITCH_MASK   (0x1 << NODE_DATA_SWITCH_SHIFT)
 
 
 static void res_get_handler(void *request, void *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
@@ -50,6 +52,8 @@ static char rsp_switch_state_as_json[] = "{\"state\":%u}";
 static uint8_t validate_etag[MAX_ETAG_SIZE] = { 0 };
 static uint8_t validate_etag_len = 1;
 static uint8_t validate_change = 1;
+/* Used to store data to be sent over netctrl */
+extern uint32_t netctrl_node_data;
 
 /*---------------------------------------------------------------------------*/
 static void
@@ -112,6 +116,9 @@ res_put_handler(void *request, void *response, uint8_t *buffer,
 			set_bad_req(response);
 			return;
 		}
+
+		netctrl_node_data = (netctrl_node_data & (~NODE_DATA_SWITCH_MASK))
+				| ((switch_state != 0) << NODE_DATA_SWITCH_SHIFT);
 	} else {
 		set_bad_req(response);
 		return;

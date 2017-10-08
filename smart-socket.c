@@ -50,7 +50,7 @@ extern resource_t
 extern int consume_reader_requests;
 
 /* Used to store data to be sent over netctrl */
-uint32_t netctrl_node_data = 0x61626364;
+uint32_t netctrl_node_data = 0x0;
 
 /** IP's Controller */
 uip_ipaddr_t controller_ipaddr = {
