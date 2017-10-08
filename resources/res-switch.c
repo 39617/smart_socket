@@ -25,6 +25,7 @@
 
 #include "include/smart-socket_constants.h"
 #include "include/error_codes.h"
+#include "consume-reader.h"
 
 #include "leds.h"
 
@@ -44,7 +45,7 @@ RESOURCE(res_switch,
 		res_put_handler,
         NULL);
 
-static uint8_t switch_state = SWITCH_DEFAULT_STATE;
+uint8_t switch_state = SWITCH_DEFAULT_STATE;
 static char rsp_switch_state_as_json[] = "{\"state\":%u}";
 /**
  * eTAG to control the version of the switch's state
@@ -106,11 +107,13 @@ res_put_handler(void *request, void *response, uint8_t *buffer,
 		if((strncmp(state, "on", 2) == 0) && (len == 2)) {
 			// TODO: passa a trabalhar com um driver
 			leds_on(LEDS_GREEN);
-			switch_state = 1;
+			switch_state = SWITCH_STATE_ON;
 		}
 		else if ((strncmp(state, "off", 3) == 0) && (len == 3)) {
 			leds_off(LEDS_GREEN);
-			switch_state = 0;
+			switch_state = SWITCH_STATE_OFF;
+			// reset reads
+			reset_reads();
 		}
 		else {
 			set_bad_req(response);
@@ -118,7 +121,7 @@ res_put_handler(void *request, void *response, uint8_t *buffer,
 		}
 
 		netctrl_node_data = (netctrl_node_data & (~NODE_DATA_SWITCH_MASK))
-				| ((switch_state != 0) << NODE_DATA_SWITCH_SHIFT);
+				| ((switch_state != SWITCH_STATE_OFF) << NODE_DATA_SWITCH_SHIFT);
 	} else {
 		set_bad_req(response);
 		return;

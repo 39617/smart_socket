@@ -31,6 +31,11 @@ void init_consume_reader();
  */
 int read_consumption();
 /*---------------------------------------------------------------------------*/
+/**
+ * Used to reset the last_consume_read and netctrl_node_data to zero
+ */
+void reset_reads();
+/*---------------------------------------------------------------------------*/
 PROCESS_NAME(consume_reader_process);
 
 /**

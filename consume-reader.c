@@ -83,6 +83,11 @@ int read_consumption() {
 	return ret;
 }
 /*---------------------------------------------------------------------------*/
+void reset_reads() {
+	last_consume_read = 0;
+	netctrl_node_data = (netctrl_node_data & (~NODE_DATA_MASK)) | last_consume_read;
+}
+/*---------------------------------------------------------------------------*/
 static void prepare_request()
 {
 	static char buff[20];

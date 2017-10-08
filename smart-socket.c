@@ -10,6 +10,7 @@
 //
 #include "netctrl-client.h"
 #include "netctrl-platform.h"
+#include "include/smart-socket_constants.h"
 //
 #include "consume-reader.h"
 //
@@ -48,6 +49,8 @@ extern resource_t
   res_readcons;
 
 extern int consume_reader_requests;
+// used to stop periodic reads when the switch is off
+extern uint8_t switch_state;
 
 /* Used to store data to be sent over netctrl */
 uint32_t netctrl_node_data = 0x0;
@@ -170,7 +173,7 @@ PROCESS_THREAD(smart_socket, ev, data)
 		}
 	} else if(((ev == PROCESS_EVENT_TIMER && data == &et_periodic_read) ||
     		(ev == sensors_event && data == &button_sensor)) &&
-			netctrl_is_registered()) {
+			netctrl_is_registered() && switch_state != SWITCH_STATE_OFF) {
       PRINTF("** Periodic Read Timer\n");
       // Send a periodic read request
       if(consume_reader_requests == 0) {
