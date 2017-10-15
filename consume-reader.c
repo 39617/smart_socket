@@ -128,7 +128,7 @@ static float get_vpp()
   float minValue = FLT_MAX;          // store min value here
 
   clock_time_t start_time = clock_time();
-   while((clock_time()-start_time) < (CLOCK_SECOND * 0.5f)) //sample for 1 Sec
+   while((clock_time()-start_time) < (CLOCK_SECOND * 0.2f)) //sample for 0.2 Sec
    {
        readValue = adc_sensor.value(ADC_SENSOR_VALUE) / 1000000.0f;
        // see if you have a new maxValue

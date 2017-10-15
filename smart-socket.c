@@ -8,6 +8,7 @@
 #include "ti-lib.h"
 #include "leds.h"
 //
+#include "smart_socket.h"
 #include "netctrl-client.h"
 #include "netctrl-platform.h"
 #include "include/smart-socket_constants.h"
@@ -30,7 +31,7 @@
 #endif
 
 #define SENSORS_CONFIG_CHANNEL(sensor, channel) (sensor).configure(ADC_SENSOR_SET_CHANNEL, channel)
-#define PEIODIC_READS_INTERVAL  5
+#define PEIODIC_READS_DEFAULT_RATE  5
 
 static void http_init_engine(void) {}
 static void http_set_service_callback(service_callback_t callback) {}
@@ -46,7 +47,8 @@ struct rest_implementation http_rest_implementation = {0};
  */
 extern resource_t
   res_switch,
-  res_readcons;
+  res_readcons,
+  res_readrate;
 
 extern int consume_reader_requests;
 // used to stop periodic reads when the switch is off
@@ -54,6 +56,11 @@ extern uint8_t switch_state;
 
 /* Used to store data to be sent over netctrl */
 uint32_t netctrl_node_data = 0x0;
+
+/** Periodic readings timer */
+static struct etimer et_periodic_read;
+/** Specifies the readings rate - In Seconds */
+static uint16_t tei_reading_rate = PEIODIC_READS_DEFAULT_RATE;
 
 /** IP's Controller */
 uip_ipaddr_t controller_ipaddr = {
@@ -65,6 +72,7 @@ uip_ipaddr_t controller_ipaddr = {
 		.u16[5] = 0xff4b,
 		.u16[6] = 0x27fe,
 		.u16[7] = 0x0fc5 };
+
 
 PROCESS(smart_socket, "Smart-Socket");
 AUTOSTART_PROCESSES(&smart_socket);
@@ -86,7 +94,17 @@ static void init_rf_if_addr(void) {
 	printf("%02x%02x\n", lladdr->ipaddr.u8[14], lladdr->ipaddr.u8[15]);
 	}
 }
-
+/*---------------------------------------------------------------------------*/
+void update_readings_rate(uint16_t rate) {
+  tei_reading_rate = rate;
+  etimer_stop(&et_periodic_read);
+  etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
+}
+/*---------------------------------------------------------------------------*/
+uint16_t get_readings_rate() {
+	return tei_reading_rate;
+}
+/*---------------------------------------------------------------------------*/
 #define LIGHT_ON_DURATION   0.05
 #define LIGHT_OFF_DURATION  5
 static clock_time_t update_light_signal() {
@@ -107,7 +125,6 @@ PROCESS_THREAD(smart_socket, ev, data)
 {
   static struct etimer et_light_signal;
   static struct etimer et_netctrl;
-  static struct etimer et_periodic_read;
 
   PROCESS_BEGIN();
 
@@ -138,6 +155,7 @@ PROCESS_THREAD(smart_socket, ev, data)
   /* Activate resources */
   rest_activate_resource(&res_switch, "switch"); // on/off switch
   rest_activate_resource(&res_readcons, "readcons"); // read energetic consume
+  rest_activate_resource(&res_readrate, "readrate"); // used to configure periodic reads
 
   // Netctrl
   netctrl_client_init_network(&controller_ipaddr, NETCTRL_DEFAULT_LISTEN_PORT);
@@ -166,19 +184,20 @@ PROCESS_THREAD(smart_socket, ev, data)
 			// Handle the response
 			etimer_set(&et_netctrl,
 					netctrl_client_handle_event(NETCTRL_CLIENT_EVT_NET) * CLOCK_SECOND);
-			// Verifiy if the node are registered just after this response
-			if((registered != NETCTRL_CLIENT_REGISTERED) && (netctrl_is_registered() == netctrl_is_registered())) {
-				etimer_set(&et_periodic_read, PEIODIC_READS_INTERVAL * CLOCK_SECOND);
+			// Start periodic reads only after a successfully registration
+			if((registered != NETCTRL_CLIENT_REGISTERED) && netctrl_is_registered()
+					&& etimer_expired(&et_periodic_read)) {
+				etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
 			}
 		}
-	} else if(((ev == PROCESS_EVENT_TIMER && data == &et_periodic_read) ||
-    		(ev == sensors_event && data == &button_sensor)) &&
-			netctrl_is_registered() && switch_state != SWITCH_STATE_OFF) {
-      PRINTF("** Periodic Read Timer\n");
+	} else if(((ev == PROCESS_EVENT_TIMER && data == &et_periodic_read)
+    		|| (ev == sensors_event && data == &button_sensor))
+			&& switch_state != SWITCH_STATE_OFF && netctrl_is_registered()) {
       // Send a periodic read request
       if(consume_reader_requests == 0) {
     	  process_post(&consume_reader_process, read_consume_event, NULL);
       }
+      etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
     }
   }  /* while (1) */
 
