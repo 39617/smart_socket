@@ -86,7 +86,7 @@ int read_consumption() {
 
 	VRMS = (Voltage/2.0f) * 0.707f;  //root 2 is 0.707
 	AmpsRMS = (VRMS * 1000)/mVperAmp;
-	last_consume_read = (int) ((AmpsRMS-0.09f) * 1000.0f);
+	last_consume_read = (int) ((AmpsRMS-0.098f) * 1000.0f);
 
 	return 0;
 }
