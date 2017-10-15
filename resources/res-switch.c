@@ -45,6 +45,7 @@ RESOURCE(res_switch,
 		res_put_handler,
         NULL);
 
+/* Used by smart-socket.c and res-readcons.c */
 uint8_t switch_state = SWITCH_DEFAULT_STATE;
 static char rsp_switch_state_as_json[] = "{\"state\":%u}";
 /**

@@ -25,6 +25,8 @@
 
 
 static void res_get_handler(void *request, void *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
+//
+extern uint8_t switch_state;
 
 RESOURCE(res_readcons,
 		"title=\"Consume Reader\"",
@@ -39,7 +41,13 @@ static void
 res_get_handler(void *request, void *response, uint8_t *buffer,
 		uint16_t preferred_size, int32_t *offset)
 {
-	int len = snprintf((char *)buffer, MAX_RSP_PAYLOAD, rsp_consume_read_as_json, read_consumption());
+	int reading;
+	if(switch_state == SWITCH_STATE_ON) {
+		reading = read_consumption();
+	} else {
+		reading = 0;
+	}
+	int len = snprintf((char *)buffer, MAX_RSP_PAYLOAD, rsp_consume_read_as_json, reading);
 	REST.set_header_content_type(response, REST.type.APPLICATION_JSON);
 	REST.set_response_payload(response, buffer, len);
 }
