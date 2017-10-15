@@ -43,7 +43,7 @@ res_get_handler(void *request, void *response, uint8_t *buffer,
 {
 	int reading;
 	if(switch_state == SWITCH_STATE_ON) {
-		reading = read_consumption();
+		reading = readedAmps;
 	} else {
 		reading = 0;
 	}

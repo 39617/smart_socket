@@ -11,7 +11,7 @@
 #define UIP_CONF_LLH_LEN				14
 
 #define COAPTOHTTP_URI  "coaptohttp" /*!< Controller's endpoint used to send CoAP messages to the exterior */
-#define CONSUME_PATH  "p=/consumo" /*!< External endpoint used to send periodic consumption readings */
+#define CONSUME_PATH  "p=/cons" /*!< External endpoint used to send periodic consumption readings */
 
 // TODO just for tests
 #define NETSTACK_CONF_RDC				nullrdc_driver

@@ -36,6 +36,7 @@
 #endif
 
 #define NODE_DATA_MASK  0xFFFF
+#define SAMPLE_DURATION  0.2f
 
 /* Used to store the last consume readed. */
 uint16_t last_consume_read;
@@ -53,6 +54,7 @@ extern uint32_t netctrl_node_data;
  * Number of requests
  */
 int consume_reader_requests = 0;
+int readedAmps;
 
 
 
@@ -60,7 +62,7 @@ int mVperAmp = 66; // use 100 for 20A Module and 66 for 30A Module
 static float Voltage = 0;
 static float VRMS = 0;
 static float AmpsRMS = 0;
-static float get_vpp();
+static int get_vpp(float *value);
 
 
 
@@ -75,12 +77,15 @@ void init_consume_reader() {
 }
 /*---------------------------------------------------------------------------*/
 int read_consumption() {
-	Voltage = get_vpp();
+	if(get_vpp(&Voltage)) {
+		return 1;
+	}
+
 	VRMS = (Voltage/2.0f) * 0.707f;  //root 2 is 0.707
 	AmpsRMS = (VRMS * 1000)/mVperAmp;
+	readedAmps = (int) ((AmpsRMS-0.09f) * 1000.0f);
 
-	int ret = (int) ((AmpsRMS-0.09f) * 1000.0f);
-	return ret;
+	return 0;
 }
 /*---------------------------------------------------------------------------*/
 void reset_reads() {
@@ -121,14 +126,14 @@ static void client_chunk_handler(void *response)
     PRINTF("Payload len: %d\n",  len);
 }
 /*---------------------------------------------------------------------------*/
-static float get_vpp()
+static float maxValue = 0;          // store max value here
+static float minValue = FLT_MAX;          // store min value here
+static int get_vpp(float *value)
 {
   float readValue;
-  float maxValue = 0;          // store max value here
-  float minValue = FLT_MAX;          // store min value here
 
   clock_time_t start_time = clock_time();
-   while((clock_time()-start_time) < (CLOCK_SECOND * 0.2f)) //sample for 0.2 Sec
+   if((clock_time()-start_time) < (CLOCK_SECOND * SAMPLE_DURATION)) //sample for 0.2 Sec
    {
        readValue = adc_sensor.value(ADC_SENSOR_VALUE) / 1000000.0f;
        // see if you have a new maxValue
@@ -144,9 +149,14 @@ static float get_vpp()
            minValue += readValue;
            minValue = minValue / 2.0f;
        }
-   }
 
-   return (maxValue - minValue);
+       *value = (maxValue - minValue);
+       return 1;
+   } else {
+	   maxValue = 0;
+	   minValue = FLT_MAX;
+	   return 0;
+   }
  }
 
 PROCESS_THREAD(consume_reader_process, ev, data)
@@ -176,6 +186,10 @@ PROCESS_THREAD(consume_reader_process, ev, data)
 			  UIP_HTONS(COAP_DEFAULT_PORT), request_packet,
 			  client_chunk_handler);
 	  consume_reader_requests--;
+    } else if(ev == PROCESS_EVENT_POLL) {
+    	if(read_consumption()) {
+    		process_poll(&consume_reader_process);
+    	}
     }
   }  /* while (1) */
 
