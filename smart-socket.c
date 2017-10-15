@@ -16,6 +16,8 @@
 #include "consume-reader.h"
 //
 #include "dev/button-sensor.h"
+//
+#include "config-loader.h"
 
 
 #define DEBUG 1
@@ -99,6 +101,8 @@ void update_readings_rate(uint16_t rate) {
   tei_reading_rate = rate;
   etimer_stop(&et_periodic_read);
   etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
+  // Save the new Config
+  save_config();
 }
 /*---------------------------------------------------------------------------*/
 uint16_t get_readings_rate() {
@@ -145,6 +149,18 @@ PROCESS_THREAD(smart_socket, ev, data)
   PRINTF("LL header: %u\n", UIP_LLH_LEN);
   PRINTF("IP+UDP header: %u\n", UIP_IPUDPH_LEN);
   PRINTF("REST max chunk: %u\n", REST_MAX_CHUNK_SIZE);
+
+  // Load Configs
+  PRINTF("Loading configs...\n");
+  int ret = load_config();
+  if(ret != CONFIG_LOADER_LOAD_OK) {
+    PRINTF("Loading configs failed...\n");
+    // May be the first time
+    save_config();
+  } else {
+	  tei_reading_rate = tei_configs.periodic_reads_rate;
+  }
+  PRINTF("Loadig done.\n");
 
   /* Initialize the REST engine. */
   // TODO: ...

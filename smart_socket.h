@@ -11,4 +11,6 @@
 
 PROCESS_NAME(smart_socket);
 
+uint16_t get_readings_rate();
+
 #endif /* SMART_SOCKET_H_ */

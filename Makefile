@@ -6,6 +6,9 @@ CFLAGS += -DPROJECT_CONF_H=\"project-conf.h\"
 # Debug - TODO: retirar
 CFLAGS += -g
 
+# Config
+PROJECTDIRS += ./config-manager
+PROJECT_SOURCEFILES += config-loader.c
 # Errors
 PROJECT_SOURCEFILES += ./error_codes.c
 # Consume Reader
