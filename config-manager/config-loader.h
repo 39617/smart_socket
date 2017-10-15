@@ -22,6 +22,7 @@ typedef struct tei_config_s {
   uint32_t magic;
   int len;
   uint16_t periodic_reads_rate;
+  uint16_t max_consume_allowed;
 } tei_config_t;
 
 extern tei_config_t tei_configs;

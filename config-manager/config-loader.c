@@ -54,6 +54,7 @@ save_config()
 	tei_configs.magic = CONFIG_MAGIC;
 	tei_configs.len = sizeof(tei_config_t);
 	tei_configs.periodic_reads_rate = get_readings_rate();
+	tei_configs.max_consume_allowed = get_max_consume_allowed();
 
     rv = ext_flash_write(CONFIG_FLASH_OFFSET, sizeof(tei_config_t),
                          (uint8_t *)&tei_configs);

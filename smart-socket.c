@@ -34,6 +34,7 @@
 
 #define SENSORS_CONFIG_CHANNEL(sensor, channel) (sensor).configure(ADC_SENSOR_SET_CHANNEL, channel)
 #define PEIODIC_READS_DEFAULT_RATE  5
+#define DEFAULT_MAX_CONS_ALLOWED  2000
 
 static void http_init_engine(void) {}
 static void http_set_service_callback(service_callback_t callback) {}
@@ -50,7 +51,8 @@ struct rest_implementation http_rest_implementation = {0};
 extern resource_t
   res_switch,
   res_readcons,
-  res_readrate;
+  res_readrate,
+  res_maxcons;
 
 extern int consume_reader_requests;
 // used to stop periodic reads when the switch is off
@@ -63,6 +65,8 @@ uint32_t netctrl_node_data = 0x0;
 static struct etimer et_periodic_read;
 /** Specifies the readings rate - In Seconds */
 static uint16_t tei_reading_rate = PEIODIC_READS_DEFAULT_RATE;
+/** Max allowed consumption on this TEI */
+uint16_t max_cons_allowed = DEFAULT_MAX_CONS_ALLOWED;
 
 /** IP's Controller */
 uip_ipaddr_t controller_ipaddr = {
@@ -103,6 +107,16 @@ void update_readings_rate(uint16_t rate) {
   etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
   // Save the new Config
   save_config();
+}
+/*---------------------------------------------------------------------------*/
+void update_max_consume_allowed(uint16_t consume) {
+	max_cons_allowed = consume;
+  // Updates the new Config
+  save_config();
+}
+/*---------------------------------------------------------------------------*/
+uint16_t get_max_consume_allowed() {
+	return max_cons_allowed;
 }
 /*---------------------------------------------------------------------------*/
 uint16_t get_readings_rate() {
@@ -159,6 +173,7 @@ PROCESS_THREAD(smart_socket, ev, data)
     save_config();
   } else {
 	  tei_reading_rate = tei_configs.periodic_reads_rate;
+	  update_max_consume_allowed(tei_configs.max_consume_allowed);
   }
   PRINTF("Loadig done.\n");
 
@@ -172,6 +187,7 @@ PROCESS_THREAD(smart_socket, ev, data)
   rest_activate_resource(&res_switch, "switch"); // on/off switch
   rest_activate_resource(&res_readcons, "readcons"); // read energetic consume
   rest_activate_resource(&res_readrate, "readrate"); // used to configure periodic reads
+  rest_activate_resource(&res_maxcons, "maxcons"); // used to configure max consumption allowed
 
   // Netctrl
   netctrl_client_init_network(&controller_ipaddr, NETCTRL_DEFAULT_LISTEN_PORT);
@@ -203,7 +219,7 @@ PROCESS_THREAD(smart_socket, ev, data)
 			// Start periodic reads only after a successfully registration
 			if((registered != NETCTRL_CLIENT_REGISTERED) && netctrl_is_registered()
 					&& etimer_expired(&et_periodic_read)) {
-				etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
+				etimer_set(&et_periodic_read, 1 * CLOCK_SECOND);
 			}
 		}
 	} else if(((ev == PROCESS_EVENT_TIMER && data == &et_periodic_read)
@@ -213,7 +229,7 @@ PROCESS_THREAD(smart_socket, ev, data)
       if(consume_reader_requests == 0) {
     	  process_post(&consume_reader_process, read_consume_event, NULL);
       }
-      etimer_set(&et_periodic_read, tei_reading_rate * CLOCK_SECOND);
+      etimer_set(&et_periodic_read, 1 * CLOCK_SECOND);
     }
   }  /* while (1) */
 

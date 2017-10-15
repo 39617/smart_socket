@@ -18,7 +18,7 @@
 /*!< Event Read consume */
 extern process_event_t read_consume_event;
 /*!< */
-extern int readedAmps;
+extern uint16_t last_consume_read;
 
 /*---------------------------------------------------------------------------*/
 /**

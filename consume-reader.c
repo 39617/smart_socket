@@ -20,7 +20,9 @@
 //
 #include "rest-engine.h"
 #include "er-coap-engine.h"
+#include "leds.h"
 #include "include/smart-socket_constants.h"
+#include "smart_socket.h"
 
 
 #define DEBUG 0
@@ -36,7 +38,7 @@
 #endif
 
 #define NODE_DATA_MASK  0xFFFF
-#define SAMPLE_DURATION  0.2f
+#define SAMPLE_DURATION  0.5f
 
 /* Used to store the last consume readed. */
 uint16_t last_consume_read;
@@ -49,12 +51,13 @@ char rsp_consume_read_as_json[] = "{\"cons\":%d}"; /*!< JSON object with the con
 extern uip_ipaddr_t controller_ipaddr;
 /* Used to store data to be sent over netctrl */
 extern uint32_t netctrl_node_data;
+//
+static uint16_t events_counter = 0;
 
 /**
  * Number of requests
  */
 int consume_reader_requests = 0;
-int readedAmps;
 
 
 
@@ -83,7 +86,7 @@ int read_consumption() {
 
 	VRMS = (Voltage/2.0f) * 0.707f;  //root 2 is 0.707
 	AmpsRMS = (VRMS * 1000)/mVperAmp;
-	readedAmps = (int) ((AmpsRMS-0.09f) * 1000.0f);
+	last_consume_read = (int) ((AmpsRMS-0.09f) * 1000.0f);
 
 	return 0;
 }
@@ -128,11 +131,12 @@ static void client_chunk_handler(void *response)
 /*---------------------------------------------------------------------------*/
 static float maxValue = 0;          // store max value here
 static float minValue = FLT_MAX;          // store min value here
+static clock_time_t start_time;
 static int get_vpp(float *value)
 {
   float readValue;
 
-  clock_time_t start_time = clock_time();
+
    if((clock_time()-start_time) < (CLOCK_SECOND * SAMPLE_DURATION)) //sample for 0.2 Sec
    {
        readValue = adc_sensor.value(ADC_SENSOR_VALUE) / 1000000.0f;
@@ -158,7 +162,11 @@ static int get_vpp(float *value)
 	   return 0;
    }
  }
-
+/*---------------------------------------------------------------------------*/
+static int max_consume_allowed_ok() {
+  return max_cons_allowed - last_consume_read;
+}
+/*---------------------------------------------------------------------------*/
 PROCESS_THREAD(consume_reader_process, ev, data)
 {
   PROCESS_BEGIN();
@@ -175,17 +183,29 @@ PROCESS_THREAD(consume_reader_process, ev, data)
 
 	if(ev == read_consume_event) {
       PRINTF("   Periodic Read Event\n");
-      last_consume_read = read_consumption();
+      start_time = clock_time();
+      process_poll(&consume_reader_process);
+      read_consumption();
       netctrl_node_data = (netctrl_node_data & (~NODE_DATA_MASK)) | last_consume_read;
       PRINTF("   ADC Value: %d\n", last_consume_read);
-      prepare_request();
-      // Make the CoAP request!
-      consume_reader_requests++;
-	  COAP_BLOCKING_REQUEST(
-			  &controller_ipaddr,
-			  UIP_HTONS(COAP_DEFAULT_PORT), request_packet,
-			  client_chunk_handler);
-	  consume_reader_requests--;
+      // Check max consumption
+      if(max_consume_allowed_ok() < 0) {
+    	  leds_off(LEDS_GREEN);
+      }
+
+      if(events_counter >= get_readings_rate()) {
+		  prepare_request();
+		  // Make the CoAP request!
+		  consume_reader_requests++;
+		  COAP_BLOCKING_REQUEST(
+				  &controller_ipaddr,
+				  UIP_HTONS(COAP_DEFAULT_PORT), request_packet,
+				  client_chunk_handler);
+		  consume_reader_requests--;
+		  events_counter = 0;
+      } else {
+    	  events_counter ++;
+      }
     } else if(ev == PROCESS_EVENT_POLL) {
     	if(read_consumption()) {
     		process_poll(&consume_reader_process);
